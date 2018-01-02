@@ -29,11 +29,7 @@
 
 
 (def ^:private system-env (read-env-map (System/getenv)))
-
 (def ^:dynamic ^:private *env-override* {})
-
-(defn- effective-env []
-  (merge system-env *env-override*))
 
 
 (def default-config-spec
@@ -41,7 +37,7 @@
    :default  nil
    :secret   false})
 
-(defn effective-config-spec [config-sym config-spec]
+(defn- effective-config-spec [config-sym config-spec]
   (merge default-config-spec
          {:var-name config-sym}
          config-spec))
@@ -53,28 +49,39 @@
   (print-ctor c (fn [o w] (print-method (.error o) w)) w))
 
 
-;; If possible, load and coerce, otherwise set to ConfigNotLoaded
-(defn- load-value [config-sym config-spec]
-  (let [{:keys [var-name required default] :as eff-spec} (effective-config-spec config-sym config-spec)
-        eff-var-name (keywordize var-name)
-        eff-env      (effective-env)
-        present      (contains? eff-env eff-var-name)
-        value        (get eff-env eff-var-name default)]
-    ;(prn config-sym)
-    ;(clojure.pprint/pprint eff-spec)
-    (if (and required (not present))
-      (ConfigNotLoaded. {:code ::required-not-present :message "Required not present"})
-      (when value
-        (try
-          (cond
-            (contains? config-spec :spec)
-            (c/coerce-to-spec (:spec config-spec) value)
-            (contains? config-spec :schema)
-            (c/coerce-to-schema (:schema config-spec) value)
-            :else
-            (c/coerce-to-spec string? value))
-          (catch Exception e
-            (ConfigNotLoaded. {:code ::invalid-value :value value :message (str e)})))))))
+(defn- find-in-sources [k tagged-maps]
+  (some (fn [[tag m]]
+          (when (contains? m k)
+            [(get m k) tag]))
+        tagged-maps))
+
+
+(defn load-piece [v]
+  ;(println "loading" v)
+  (let [{config-sym :name :keys [::effective-spec ::user-spec]} (meta v)
+        {:keys [default var-name required schema]} effective-spec
+        {:keys [spec]} user-spec
+        [raw-value source] (find-in-sources var-name [[:override *env-override*]
+                                                      [:environment system-env]
+                                                      [:default (when default {var-name default})]])
+        present (some? source)
+        [value error] (if (and required (not present))
+                        (let [error {:code ::required-not-present :message "Required not present"}]
+                          [(ConfigNotLoaded. error) error])
+                        (when raw-value
+                          (try
+                            (cond
+                              spec
+                              [(c/coerce-to-spec spec raw-value)]
+                              schema
+                              [(c/coerce-to-schema schema raw-value)]
+                              :else
+                              [(c/coerce-to-spec string? raw-value)])
+                            (catch Exception e
+                              (let [error {:code ::invalid-value :value raw-value :message (str e)}]
+                                [(ConfigNotLoaded. error) error])))))]
+    (alter-var-root v (constantly value))
+    (alter-meta! v assoc ::source source ::error error ::raw-value raw-value)))
 
 
 (defn def* [config-sym config-spec]
@@ -84,8 +91,12 @@
   (when (and (contains? config-spec :spec)
              (contains? config-spec :schema))
     (throw (ex-info "Both :spec and :schema are specified. Please leave only one." {})))
-  (let [initial-value# (load-value config-sym config-spec)]
-    `(def ~(with-meta config-sym {::spec config-spec}) '~initial-value#)))
+  (let [effective-spec (-> (effective-config-spec config-sym config-spec)
+                           (update :var-name keywordize))]
+    `(do
+       (def ~(with-meta config-sym {::user-spec config-spec ::effective-spec effective-spec})
+           (ConfigNotLoaded. {:code ::reload-never-called :message "cfg/reload never called."}))
+       (load-piece #'~config-sym))))
 
 (s/def ::info string?)
 (s/def ::spec some?)
@@ -104,43 +115,49 @@
 (defn- find-all-vars []
   (for [n (all-ns)
         [_ v] (ns-publics n)
-        :when (:cyrus-config.core/spec (meta v))]
+        :when (::user-spec (meta v))]
     v))
 
 
 (defn all []
   (into {} (for [v (find-all-vars)]
-             (let [{:keys [ns name ::spec]} (meta v)
-                   {:keys [var-name secret]} spec]
-               (let [error (when (instance? ConfigNotLoaded @v) (.error @v))]
-                 [v
-                  {:source-var-name (envcasize (or var-name name))
-                   :safe-value      (cond
-                                      error (:value error)
-                                      secret "<SECRET>"
-                                      :else @v)
-                   :error           (:message error)}])))))
+             (let [{:keys [::source ::error ::raw-value ::effective-spec]} (meta v)
+                   {:keys [secret var-name]} effective-spec]
+               [v
+                {:var-name  (envcasize var-name)
+                 :value     (if error nil @v)
+                 :raw-value raw-value
+                 :error     (:message error)
+                 :source    source
+                 :secret    secret}]))))
 
 
 (defn errored []
   (into {} (filter #(some? (:error (val %))) (all))))
 
 
-(defn format-errors [errored-vars]
-  (str/join "\n" (for [[k {:keys [safe-value error source-var-name]}] errored-vars]
-                   (str k ": " source-var-name "=" (pr-str safe-value) " - " error))))
+(defn- value-or-secret [secret value]
+  (if secret "<SECRET>" (pr-str value)))
 
 
-(defn format-all [all-vars]
-  (str/join "\n" (for [[k {:keys [safe-value source-var-name]}] all-vars]
-                   (str k ": " (pr-str safe-value) " from " source-var-name))))
+(defn- format-all [pieces]
+  (str/join "\n" (for [[k {:keys [var-name value raw-value source error secret]}] pieces]
+                   (let [show-value     (if error "<ERROR>" (value-or-secret secret value))
+                         show-raw-value (value-or-secret secret raw-value)]
+                     (str k ": "
+                          (if source
+                            (if error
+                              (str show-value " because " var-name " contains " show-raw-value)
+                              (str show-value " from " var-name " in " source))
+                            (str show-value " because " var-name " is not set"))
+                          (when error (str " - " error)))))))
 
 
 (defn validate! []
   (let [errored-pieces     (errored)
-        error-descriptions (format-errors errored-pieces)]
+        error-descriptions (format-all errored-pieces)]
     (when-not (empty? errored-pieces)
-      (throw (ex-info (str "Errors found when loading config:\n" error-descriptions "\n") {})))))
+      (throw (ex-info (str "Errors found when loading config:\n" error-descriptions) {})))))
 
 
 (defn show []
@@ -149,19 +166,9 @@
 
 (defn reload-with-override! [env-override]
   (alter-var-root #'*env-override* (constantly (read-env-map env-override)))
-  ;; TODO optimize: reload only affected config pieces
   (doseq [v (find-all-vars)]
     (let [{:keys [name ::spec]} (meta v)]
-      (alter-var-root v (constantly (load-value name spec))))))
-
-
-(defn reload! []
-  (reload-with-override! {}))
-
-
-(defn startup! []
-  (reload!)
-  (validate!))
+      (load-piece v))))
 
 
 (defmacro def [config-sym config-spec]
