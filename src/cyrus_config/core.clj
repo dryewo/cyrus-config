@@ -95,7 +95,7 @@
                            (update :var-name keywordize))]
     `(do
        (def ~(with-meta config-sym {::user-spec config-spec ::effective-spec effective-spec})
-           (ConfigNotLoaded. {:code ::reload-never-called :message "cfg/reload never called."}))
+         (ConfigNotLoaded. {:code ::reload-never-called :message "cfg/reload never called."}))
        (load-piece #'~config-sym))))
 
 (s/def ::info string?)
@@ -105,8 +105,7 @@
 (s/def ::default any?)
 (s/def ::secret boolean?)
 (s/def ::var-name (s/or :string string? :keyword keyword?))
-(s/def ::config-spec (s/keys :req-un [::info]
-                             :opt-un [::spec ::schema ::required ::default ::secret ::var-name]))
+(s/def ::config-spec (s/keys :opt-un [::info ::spec ::schema ::required ::default ::secret ::var-name]))
 
 (s/fdef def*
   :args (s/cat :config-name symbol? :config-spec ::config-spec))
@@ -122,14 +121,15 @@
 (defn all []
   (into {} (for [v (find-all-vars)]
              (let [{:keys [::source ::error ::raw-value ::effective-spec]} (meta v)
-                   {:keys [secret var-name]} effective-spec]
+                   {:keys [secret var-name info]} effective-spec]
                [v
                 {:var-name  (envcasize var-name)
                  :value     (if error nil @v)
                  :raw-value raw-value
                  :error     (:message error)
                  :source    source
-                 :secret    secret}]))))
+                 :secret    secret
+                 :info      info}]))))
 
 
 (defn errored []
@@ -141,7 +141,7 @@
 
 
 (defn- format-all [pieces]
-  (str/join "\n" (for [[k {:keys [var-name value raw-value source error secret]}] pieces]
+  (str/join "\n" (for [[k {:keys [var-name value raw-value source error secret info]}] pieces]
                    (let [show-value     (if error "<ERROR>" (value-or-secret secret value))
                          show-raw-value (value-or-secret secret raw-value)]
                      (str k ": "
@@ -150,7 +150,8 @@
                               (str show-value " because " var-name " contains " show-raw-value)
                               (str show-value " from " var-name " in " source))
                             (str show-value " because " var-name " is not set"))
-                          (when error (str " - " error)))))))
+                          (when error (str " - " error))
+                          (when info (str " // " info)))))))
 
 
 (defn validate! []
