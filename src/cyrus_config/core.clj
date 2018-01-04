@@ -130,9 +130,10 @@
                          show-raw-value (value-or-secret secret raw-value)]
                      (str k ": "
                           (if source
-                            (if error
-                              (str show-value " because " var-name " contains " show-raw-value)
-                              (str show-value " from " var-name " in " source))
+                            (str (if error
+                                   (str show-value " because " var-name " contains " show-raw-value)
+                                   (str show-value " from " var-name))
+                                 " in " source)
                             (str show-value " because " var-name " is not set"))
                           (when error (str " - " error))
                           (when info (str " // " info)))))))

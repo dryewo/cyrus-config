@@ -101,11 +101,13 @@
 (deftest validate
   (testing "Validation throws an exception with error descriptions"
     (is (thrown-with-msg? ExceptionInfo #"<ERROR> because VALIDATE_1 is not set - Required not present" (cfg/validate!)))
-    (is (thrown-with-msg? ExceptionInfo #"<ERROR> because VALIDATE_2 contains \"a\" - java.lang.NumberFormatException" (cfg/validate!)))))
+    (is (thrown-with-msg? ExceptionInfo #"<ERROR> because VALIDATE_2 contains \"a\" in :default - java.lang.NumberFormatException" (cfg/validate!)))))
 
 
 ;; Manual tests
 (comment
+  ;; Should look nice
+  (println (cfg/show))
   ;; Should throw
   (macroexpand-1 '(cfg/def validate-1 {:spec 1 :schema 2}))
   (macroexpand-1 '(cfg/def validate-1 {:required true :default ""}))
