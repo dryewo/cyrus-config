@@ -7,7 +7,7 @@
            (clojure.lang ExceptionInfo)))
 
 
-(defn- keywordize [s]
+(defn keywordize [s]
   (-> s
       (name)
       (str/lower-case)
@@ -37,10 +37,22 @@
    :default  nil
    :secret   false})
 
-(defn- effective-config-spec [config-sym config-spec]
+(defn effective-config-spec [config-sym config-spec]
   (merge default-config-spec
          {:var-name config-sym}
          config-spec))
+
+(s/def ::info string?)
+(s/def ::spec some?)
+(s/def ::schema some?)
+(s/def ::required boolean?)
+(s/def ::default any?)
+(s/def ::secret boolean?)
+(s/def ::var-name (s/or :string string? :keyword keyword?))
+(s/def ::config-spec (s/keys :opt-un [::info ::spec ::schema ::required ::default ::secret ::var-name]))
+
+(s/fdef effective-config-spec
+  :args (s/cat :config-name symbol? :config-spec ::config-spec))
 
 
 ;; When configuration piece fails to load or validate, it gets this value, which cannot be mistaken with anything else.
@@ -57,7 +69,6 @@
 
 
 (defn load-piece [v]
-  ;(println "loading" v)
   (let [{config-sym :name :keys [::effective-spec ::user-spec]} (meta v)
         {:keys [default var-name required schema]} effective-spec
         {:keys [spec]} user-spec
@@ -82,33 +93,6 @@
                                 [(ConfigNotLoaded. error) error])))))]
     (alter-var-root v (constantly value))
     (alter-meta! v assoc ::source source ::error error ::raw-value raw-value)))
-
-
-(defn def* [config-sym config-spec]
-  (when (and (:required config-spec)
-             (contains? config-spec :default))
-    (throw (ex-info "Both :default and :required are specified. Please leave only one." {})))
-  (when (and (contains? config-spec :spec)
-             (contains? config-spec :schema))
-    (throw (ex-info "Both :spec and :schema are specified. Please leave only one." {})))
-  (let [effective-spec (-> (effective-config-spec config-sym config-spec)
-                           (update :var-name keywordize))]
-    `(do
-       (def ~(with-meta config-sym {::user-spec config-spec ::effective-spec effective-spec})
-         (ConfigNotLoaded. {:code ::reload-never-called :message "cfg/reload never called."}))
-       (load-piece #'~config-sym))))
-
-(s/def ::info string?)
-(s/def ::spec some?)
-(s/def ::schema some?)
-(s/def ::required boolean?)
-(s/def ::default any?)
-(s/def ::secret boolean?)
-(s/def ::var-name (s/or :string string? :keyword keyword?))
-(s/def ::config-spec (s/keys :opt-un [::info ::spec ::schema ::required ::default ::secret ::var-name]))
-
-(s/fdef def*
-  :args (s/cat :config-name symbol? :config-spec ::config-spec))
 
 
 (defn- find-all-vars []
@@ -173,5 +157,17 @@
 
 
 (defmacro def [config-sym config-spec]
-  ;(println (str "(cfg/def " config-sym " " (pr-str config-spec) ")"))
-  (def* config-sym (eval config-spec)))
+  ;; Evaluation needed to see the actual value of :required
+  (let [evaled-config-spec (eval config-spec)]
+    (when (and (:required evaled-config-spec)
+               (contains? evaled-config-spec :default))
+      (throw (ex-info ":default is specified while :required is true." {})))
+    (when (and (contains? evaled-config-spec :spec)
+               (contains? evaled-config-spec :schema))
+      (throw (ex-info "Both :spec and :schema are specified. Please leave only one." {}))))
+  ;; Not using gensym because it somehow fails to work inside def
+  `(let [~'effective-spec (-> (effective-config-spec '~config-sym ~config-spec)
+                              (update :var-name keywordize))]
+     (def ~(with-meta config-sym {::user-spec config-spec ::effective-spec 'effective-spec})
+       (ConfigNotLoaded. {:code ::reload-never-called :message "cfg/reload never called."}))
+     (load-piece #'~config-sym)))
