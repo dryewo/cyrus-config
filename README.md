@@ -92,15 +92,9 @@ will silently get a special value that indicates an error, for example:
 * `:spec` — Clojure Spec to conform the value to. Defaults to `string?`, can also be `int?`, `keyword?`, `double?` and 
   any complex spec, in which case the original value will be parsed as EDN and then conformed. See Conforming/Coercing section below. 
 * `:schema` — Prismatic Schema to coerce the value to (same as `:spec`, but for Prismatic). Complex schemas first parse the value as YAML.
-* `:secret` — boolean, if true, the value will not be displayed in the overview returned by `(cfg/show)`.
-
-    ```clj
-    (cfg/def bad-config {:spec int? :default "a"})
-    bad-config
-    => #=(cyrus_config.core.ConfigNotLoaded.
-         {:code :cyrus-config.core/invalid-value,
-          :value "a",
-          :message "java.lang.NumberFormatException: For input string: \"a\""})
+* `:secret` — boolean, if true, the value will not be displayed in the overview returned by `(cfg/show)`:
+    ```
+    #'my.db/password: <SECRET> from DB_PASSWORD in :environment // Database password
     ```
 
 #### Validation
@@ -117,7 +111,7 @@ The output looks like this:
 cyrus-config.core/validate!  core.clj:  146
        clojure.core/ex-info  core.clj: 4739
 clojure.lang.ExceptionInfo: Errors found when loading config:
-                            #'my.http/port: <ERROR> because HTTP_PORT contains "abcd" - java.lang.NumberFormatException: For input string: "abcd" // Port to listen on
+                            #'my.http/port: <ERROR> because HTTP_PORT contains "abcd" in :environment - java.lang.NumberFormatException: For input string: "abcd" // Port to listen on
 ```
 
 #### Summary
