@@ -1,4 +1,7 @@
 # cyrus-config
+[![Build Status](https://travis-ci.org/dryewo/cyrus-config.svg?branch=master)](https://travis-ci.org/dryewo/cyrus-config)
+[![codecov](https://codecov.io/gh/dryewo/cyrus-config/branch/master/graph/badge.svg)](https://codecov.io/gh/dryewo/cyrus-config)
+[![Clojars Project](https://img.shields.io/clojars/v/cyrus/config.svg)](https://clojars.org/cyrus/config)
 
 REPL-friendly config loading library.
 
