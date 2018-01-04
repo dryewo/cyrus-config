@@ -6,7 +6,7 @@
 REPL-friendly config loading library.
 
 ```clj
-[cyrus/config "0.0.0"]
+[cyrus/config "0.1.0"]
 ```
 
 ## Usage

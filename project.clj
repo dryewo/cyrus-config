@@ -1,4 +1,4 @@
-(defproject cyrus/config "0.0.0"
+(defproject cyrus/config "0.1.0"
   :description "Config loading library"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
