@@ -70,6 +70,12 @@ Config loaded:
 #'my.http/port: 8080 from HTTP_PORT in :enironment // Port to listen on
 ```
 
+This library is also a part of [cyrus] Leiningen template:
+
+```
+$ lein new cyrus org.example/my-project +all
+```
+
 ### Reference
 
 #### Defining
@@ -372,3 +378,4 @@ your option) any later version.
 [12 Factor App]: https://12factor.net/
 [spec]: https://github.com/clojure/spec.alpha
 [Prismatic Schema]: https://github.com/plumatic/schema
+[cyrus]: https://github.com/dryewo/cyrus
