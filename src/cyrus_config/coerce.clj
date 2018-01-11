@@ -6,8 +6,9 @@
 (def ^:private known-conformers
   {int?     #(if (int? %) % (Integer/parseInt %))
    double?  #(if (double? %) % (Double/parseDouble %))
-   string?  str
-   keyword? keyword})
+   boolean? #(if (boolean? %) % (Boolean/parseBoolean %))
+   keyword? keyword
+   string?  str})
 
 
 (defn- edn-conformer [data]

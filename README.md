@@ -3,11 +3,34 @@
 [![codecov](https://codecov.io/gh/dryewo/cyrus-config/branch/master/graph/badge.svg)](https://codecov.io/gh/dryewo/cyrus-config)
 [![Clojars Project](https://img.shields.io/clojars/v/cyrus/config.svg)](https://clojars.org/cyrus/config)
 
-REPL-friendly config loading library.
+Almost statically typed REPL-friendly configuration library.
 
 ```clj
 [cyrus/config "0.1.0"]
 ```
+
+Many other configuration libraries just give you a map from keyword to string:
+
+```clj
+{:http-port   "8090"
+ :db-user     "master
+ :db-password "foo123"}
+```
+
+This map is collected from various sources, but there is no support for you to actually check if these values
+are present, have correct format, etc.
+
+* What if a value is missing?
+* What if it's not convertible to number or boolean?
+* What if you want to pass a list in a variable?
+* Can you remember all the configuration parameters that your application supports?
+* How can you log all the configuration values when the application starts?
+* How can you reload the configuration when you `(refresh)` your project in REPL?
+* How can you unit-test application behavior with different configuration values?
+ 
+This is what **cyrus-config** helps you with. Following [12 Factor App] manifesto, it only reads configuration 
+from environment (not files, not command line arguments, not network services),
+and then transforms, validates and summarizes it.
 
 ## Usage
 
@@ -16,12 +39,10 @@ REPL-friendly config loading library.
 (ns my.http
   (:require [cyrus-config.core :as cfg]))
 
-;; Introduce a global constant that will contain validated and transformed value from the environment
+;; Introduce a configuration constant that will contain validated and transformed value from the environment
 ;; By default uses variable name transformed from the defined name: "HTTP_PORT"
-(cfg/def http-port {:info     "Port to listen on"
-                    :spec     int?
-                    :required true
-                    :default  8080})
+(cfg/def http-port "Port to listen on" {:spec     int?
+                                        :default  8080})
 
 ;; Available immediately, without additional loading commands, but can contain a special value indicating an error.
 
@@ -53,8 +74,9 @@ Config loaded:
 
 #### Defining
 
-`(cfg/def foo-bar <parameter-map>)` — defines a constant (like normal `def` does), assigns its value according to parameters.
-Additionally, metadata is provided that contains all parameters, raw value, source (`:environment`, `:override`, `:default`) and error.
+`(cfg/def foo-bar <optional-docstring> <optional-parameter-map>)` — defines a configuration constant (which is an ordinary var,
+like normal `def` does), assigns its value according to parameters.
+Additionally, metadata is set that contains all parameters, raw value, source (`:environment`, `:override`, `:default`) and error.
 This metadata is used in `(cfg/show)`.
 
 ```clj
@@ -73,12 +95,24 @@ http-port
     ::cfg/raw-value      "8080"
     ::cfg/error          nil
     ...}
+
+;; Like with normal def, only the name is mandatory
+(cfd/def db-username)
+
+;; Docstring behaves the same way as for normal def
+(cfg/def db-password "DB password" {:secret true})
+
+;; Parameter map is optional
+(cfg/def db-url "DB URL")
+
+;; Variable name can be explicitly specified
+(cfg/def desc {:var-name "DESCRIPTION"}) 
 ```
 
 Parameters (all are optional):
 
-* `:info` — string, description of the variable
-* `:var-name` — string, environment variable name to get the value from. Defaults to `"FOO_BAR"` (according to the constant's name).
+* `:var-name` — string or keyword, environment variable name to get the value from. Automatically converted to ENV_CASE string.
+  Defaults to `"FOO_BAR"` (according to the constant's name).
 * `:required` — boolean, if the environment variable is not set, an error will be thrown during `(cfg/validate!)`. The constant
 will silently get a special value that indicates an error, for example:
     ```clj
@@ -96,6 +130,18 @@ will silently get a special value that indicates an error, for example:
     ```
     #'my.db/password: <SECRET> from DB_PASSWORD in :environment // Database password
     ```
+
+You can also use existing configuration constants' values when defining configuration constants:
+
+```clj
+(cfg/def server-url)
+
+;; This constant will only be required if SERVER_URL is set
+(cfg/def server-polling-interval {:required (some? server-url) :spec int?})
+
+;; This will get default value from SERVER_POLLING_INTERVAL, when it's set (it also has a different type)
+(cfg/def server-polling-delay {:default server-polling-interval})
+```
 
 #### Validation
 
@@ -120,11 +166,11 @@ clojure.lang.ExceptionInfo: Errors found when loading config:
 The return value looks like this:
 
 ```
-#'my.nrepl/bind: "0.0.0.0" from NREPL_BIND in :default // NREPL network interface
+#'my.nrepl/bind: "0.0.0.0" from NREPL_BIND in :default "0.0.0.0" // NREPL network interface
 #'my.nrepl/port: 55000 from NREPL_PORT in :environment // NREPL port
 #'my.db/password: <SECRET> because DB_PASSWORD is not set // Password
-#'my.db/username: "postgres" from DB_USERNAME in :default // Username
-#'my.db/jdbc-url: "jdbc:postgresql://localhost:5432/postgres" from DB_JDBC_URL in :default // Coordinates of the DB
+#'my.db/username: "postgres" from DB_USERNAME in :default "postgres" // Username
+#'my.db/jdbc-url: "jdbc:postgresql://localhost:5432/postgres" from DB_JDBC_URL in :default "jdbc:postgresql://localhost:5432/postgres" // Coordinates of the DB
 #'my.authenticator/tokeninfo-url: nil because TOKENINFO_URL is not set // URL to check access tokens against. If not set, tokens won't be checked.
 #'my.http/port: 8090 from HTTP_PORT in :environment // Port for HTTP server to listen on
 ```
@@ -285,7 +331,6 @@ For example, we can read the entire environment to a map and then redefine it fo
 This can be further improved by keeping the original environment intact and changing only the overriding:
 
 ```clj
-
 (def environment (System/getenv))
 (def ^:dynamic env-override {})
 
