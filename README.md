@@ -6,7 +6,7 @@
 Almost statically typed REPL-friendly configuration library.
 
 ```clj
-[cyrus/config "0.1.0"]
+[cyrus/config "0.2.0"]
 ```
 
 Many other configuration libraries just give you a map from keyword to string:
