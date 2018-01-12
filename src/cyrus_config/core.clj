@@ -5,7 +5,8 @@
             [cyrus-config.coerce :as c])
   (:import (java.io Writer)
            (clojure.lang ExceptionInfo)
-           (java.util LinkedHashSet)))
+           (java.util LinkedHashSet)
+           (java.util.function Predicate)))
 
 
 (defn envcasize [s]
@@ -94,8 +95,9 @@
 
 
 (defn register-constant [v]
-  (.remove registered-constants v)
-  (.add registered-constants v))
+  (locking registered-constants
+    (.remove registered-constants v)
+    (.add registered-constants v)))
 
 
 (defn- find-all-vars []
@@ -107,14 +109,14 @@
 
 (defn- prune-registered-constants []
   (let [found-vars (set (find-all-vars))]
-    (doseq [v registered-constants]
-      (when-not (contains? found-vars v)
-        (.remove registered-constants v)))))
+    (locking registered-constants
+      (.removeIf registered-constants (reify Predicate (test [_ x] (not (contains? found-vars x))))))))
 
 
 (defn- find-all-constants []
   (prune-registered-constants)
-  (into [] registered-constants))
+  (locking registered-constants
+    (into [] registered-constants)))
 
 
 (defn all []
