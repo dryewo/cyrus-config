@@ -13,7 +13,7 @@ Many other configuration libraries just give you a map from keyword to string:
 
 ```clj
 {:http-port   "8090"
- :db-user     "master
+ :db-user     "master"
  :db-password "foo123"}
 ```
 
