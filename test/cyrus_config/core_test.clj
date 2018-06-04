@@ -181,6 +181,15 @@
     (is (= "2" transitive-depends-3))))
 
 
+(cfg/def ENV_CASE)
+(meta #'ENV_CASE)
+(deftest env-case
+  (testing "Can use ENV_CASE symbols"
+    (is (nil? ENV_CASE))
+    (cfg/reload-with-override! '{ENV_CASE "1"})
+    (is (= "1" ENV_CASE))))
+
+
 ;; Manual tests
 (comment
   ;; Should look nice
