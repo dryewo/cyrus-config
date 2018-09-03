@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - _CHANGELOG.md_ created.
+### Changed
+- Uppercase env var names in README.
 
 ## 0.2.1 — 2018-01-12
 Released without _CHANGELOG.md_

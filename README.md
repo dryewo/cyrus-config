@@ -41,7 +41,7 @@ and then transforms, validates and summarizes it.
 
 ;; Introduce a configuration constant that will contain validated and transformed value from the environment
 ;; By default uses variable name transformed from the defined name: "HTTP_PORT"
-(cfg/def http-port "Port to listen on" {:spec     int?
+(cfg/def HTTP_PORT "Port to listen on" {:spec     int?
                                         :default  8080})
 
 ;; Available immediately, without additional loading commands, but can contain a special value indicating an error.
@@ -67,7 +67,7 @@ When started, it will print something like:
 
 ```
 Config loaded:
-#'my.http/port: 8080 from HTTP_PORT in :enironment // Port to listen on
+#'my.http/HTTP_PORT: 8080 from HTTP_PORT in :enironment // Port to listen on
 ```
 
 This library is also a part of [cyrus] Leiningen template:
@@ -80,17 +80,17 @@ $ lein new cyrus org.example/my-project +all
 
 #### Defining
 
-`(cfg/def foo-bar <optional-docstring> <optional-parameter-map>)` — defines a configuration constant (which is an ordinary var,
+`(cfg/def FOO_BAR <optional-docstring> <optional-parameter-map>)` — defines a configuration constant (which is an ordinary var,
 like normal `def` does), assigns its value according to parameters.
 Additionally, metadata is set that contains all parameters, raw value, source (`:environment`, `:override`, `:default`) and error.
 This metadata is used in `(cfg/show)`.
 
 ```clj
 ;; Assuming that HTTP_PORT environment variable contains "8080"
-(cfg/def http-port {:spec int? :required true})
-http-port
+(cfg/def HTTP_PORT {:spec int? :required true})
+HTTP_PORT
 => 8080
-(meta #'http-port)
+(meta #'HTTP_PORT)
 => {::cfg/user-spec      {:spec #object[clojure.core$int_QMARK___5132 ...]}
     ::cfg/effective-spec {:required true
                           :default  nil
@@ -103,16 +103,16 @@ http-port
     ...}
 
 ;; Like with normal def, only the name is mandatory
-(cfd/def db-username)
+(cfd/def DB_USERNAME)
 
 ;; Docstring behaves the same way as for normal def
-(cfg/def db-password "DB password" {:secret true})
+(cfg/def DB_PASSWORD "DB password" {:secret true})
 
 ;; Parameter map is optional
-(cfg/def db-url "DB URL")
+(cfg/def DB_URL "DB URL")
 
 ;; Variable name can be explicitly specified
-(cfg/def desc {:var-name "DESCRIPTION"}) 
+(cfg/def DESC {:var-name "DESCRIPTION"}) 
 ```
 
 Parameters (all are optional):
@@ -122,8 +122,8 @@ Parameters (all are optional):
 * `:required` — boolean, if the environment variable is not set, an error will be thrown during `(cfg/validate!)`. The constant
 will silently get a special value that indicates an error, for example:
     ```clj
-    (cfg/def required-1 {:required true})
-    required-1
+    (cfg/def REQUIRED_1 {:required true})
+    REQUIRED_1
     => #=(cyrus_config.core.ConfigNotLoaded. {:code    :cyrus-config.core/required-not-present
                                               :message "Required not present"})
 
@@ -134,19 +134,19 @@ will silently get a special value that indicates an error, for example:
 * `:schema` — Prismatic Schema to coerce the value to (same as `:spec`, but for Prismatic). Complex schemas first parse the value as YAML.
 * `:secret` — boolean, if true, the value will not be displayed in the overview returned by `(cfg/show)`:
     ```
-    #'my.db/password: <SECRET> from DB_PASSWORD in :environment // Database password
+    #'my.db/DB_PASSWORD: <SECRET> from DB_PASSWORD in :environment // Database password
     ```
 
 You can also use existing configuration constants' values when defining configuration constants:
 
 ```clj
-(cfg/def server-url)
+(cfg/def SERVER_URL)
 
 ;; This constant will only be required if SERVER_URL is set
-(cfg/def server-polling-interval {:required (some? server-url) :spec int?})
+(cfg/def SERVER_POLLING_INTERVAL {:required (some? SERVER_URL) :spec int?})
 
 ;; This will get default value from SERVER_POLLING_INTERVAL, when it's set (it also has a different type)
-(cfg/def server-polling-delay {:default server-polling-interval})
+(cfg/def SERVER_POLLING_DELAY {:default SERVER_POLLING_INTERVAL})
 ```
 
 #### Validation
@@ -163,7 +163,7 @@ The output looks like this:
 cyrus-config.core/validate!  core.clj:  146
        clojure.core/ex-info  core.clj: 4739
 clojure.lang.ExceptionInfo: Errors found when loading config:
-                            #'my.http/port: <ERROR> because HTTP_PORT contains "abcd" in :environment - java.lang.NumberFormatException: For input string: "abcd" // Port to listen on
+                            #'my.http/HTTP_PORT: <ERROR> because HTTP_PORT contains "abcd" in :environment - java.lang.NumberFormatException: For input string: "abcd" // Port to listen on
 ```
 
 #### Summary
@@ -172,13 +172,13 @@ clojure.lang.ExceptionInfo: Errors found when loading config:
 The return value looks like this:
 
 ```
-#'my.nrepl/bind: "0.0.0.0" from NREPL_BIND in :default "0.0.0.0" // NREPL network interface
-#'my.nrepl/port: 55000 from NREPL_PORT in :environment // NREPL port
-#'my.db/password: <SECRET> because DB_PASSWORD is not set // Password
-#'my.db/username: "postgres" from DB_USERNAME in :default "postgres" // Username
-#'my.db/jdbc-url: "jdbc:postgresql://localhost:5432/postgres" from DB_JDBC_URL in :default "jdbc:postgresql://localhost:5432/postgres" // Coordinates of the DB
-#'my.authenticator/tokeninfo-url: nil because TOKENINFO_URL is not set // URL to check access tokens against. If not set, tokens won't be checked.
-#'my.http/port: 8090 from HTTP_PORT in :environment // Port for HTTP server to listen on
+#'my.nrepl/NREPL_BIND: "0.0.0.0" from NREPL_BIND in :default "0.0.0.0" // NREPL network interface
+#'my.nrepl/NREPL_PORT: 55000 from NREPL_PORT in :environment // NREPL port
+#'my.db/DB_PASSWORD: <SECRET> because DB_PASSWORD is not set // Password
+#'my.db/DB_USERNAME: "postgres" from DB_USERNAME in :default "postgres" // Username
+#'my.db/JDBC_URL: "jdbc:postgresql://localhost:5432/postgres" from DB_JDBC_URL in :default "jdbc:postgresql://localhost:5432/postgres" // Coordinates of the DB
+#'my.authenticator/TOKENINFO_URL: nil because TOKENINFO_URL is not set // URL to check access tokens against. If not set, tokens won't be checked.
+#'my.http/HTTP_PORT: 8090 from HTTP_PORT in :environment // Port for HTTP server to listen on
 ```
 
 It's recommended to print it from `-main`:
@@ -227,7 +227,7 @@ They are mutually exclusive, i.e. only one of `:spec` and `:schema` keys are pos
 It is enabled by setting `:spec` key in the parameters:
 
 ```clj
-(cfg/def http-port {:spec int?})
+(cfg/def HTTP_PORT {:spec int?})
 ```
 
 Basic types are supported: `int?`, `double?`, `keyword?`, `string?` (the default one, does nothing).
@@ -239,7 +239,7 @@ Additionally, you can put a complex value in EDN format into the variable:
 and then conform it:
 
 ```clj
-(cfg/def ip-whitelist {:spec (s/coll-of string?)})
+(cfg/def IP_WHITELIST {:spec (s/coll-of string?)})
 ip-whitelist
 => ["1.2.3.4" "4.3.2.1"]
 ;; ^ not a string, a Clojure data structure
@@ -252,7 +252,7 @@ ip-whitelist
 It is enabled by setting `:schema` key in the parameters:
 
 ```clj
-(cfg/def http-port {:schema s/Int})
+(cfg/def HTTP_PORT {:schema s/Int})
 ```
 
 Also, it's necessary to include `[squeeze "0.3.1]` library in project dependencies to use `:schema` key.
@@ -271,14 +271,14 @@ FOO='foo:\n  bar: 1\n  baz: 42'
 And then define the config constants as following:
 
 ```clj
-(cfg/def ip-whitelist {:spec [s/Str]})
-ip-whitelist
+(cfg/def IP_WHITELIST {:spec [s/Str]})
+IP_WHITELIST
 => ["1.2.3.4" "4.3.2.1"]
 
-(cfg/def foo {:schema {:foo {:bar                  s/Str 
+(cfg/def FOO {:schema {:foo {:bar                  s/Str 
                              :baz                  s/Int
                              (s/optional-key :opt) s/Keyword}}})
-foo
+FOO
 => {:foo {:bar "1" 
           :baz 42}}
 
