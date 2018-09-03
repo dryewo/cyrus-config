@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
+
+## [0.2.2] — 2018-09-03
 ### Added
 - _CHANGELOG.md_ created.
 ### Changed
@@ -16,4 +18,5 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 Released without _CHANGELOG.md_
 
 
-[Unreleased]: https://github.com/dryewo/cyrus-config/compare/0.2.1...HEAD
+[0.2.2]: https://github.com/dryewo/cyrus-config/compare/0.2.1...0.2.2
+[Unreleased]: https://github.com/dryewo/cyrus-config/compare/0.2.2...HEAD
