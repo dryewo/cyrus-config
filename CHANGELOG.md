@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
+### Added
+- Full support for arbitrary conforming specs (see README).
+- `::cyrus-config.coerce/nonblank-string` conforming spec.
+### Changed
+- **BREAKING CHANGE** Conversion from EDN now requires using `from-edn` wrapper (see README).
+### Fixed
+- Values ending with "/" now don't throw errors when parsing.
 
 ## [0.2.2] — 2018-09-03
 ### Added

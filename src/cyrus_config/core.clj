@@ -1,10 +1,8 @@
 (ns cyrus-config.core
   (:require [clojure.spec.alpha :as s]
             [clojure.string :as str]
-            [clojure.edn :as edn]
             [cyrus-config.coerce :as c])
   (:import (java.io Writer)
-           (clojure.lang ExceptionInfo)
            (java.util LinkedHashSet)
            (java.util.function Predicate)))
 

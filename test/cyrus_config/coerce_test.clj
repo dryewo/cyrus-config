@@ -1,8 +1,9 @@
 (ns cyrus-config.coerce-test
   (:require [clojure.test :refer :all]
-            [cyrus-config.coerce :refer :all]
+            [cyrus-config.coerce :refer :all :as c]
             [clojure.spec.alpha :as s]
-            [schema.core :as ps]))
+            [schema.core :as ps]
+            [cheshire.core :as json]))
 
 
 (deftest to-spec
@@ -13,18 +14,30 @@
 
       "123" int? 123
       "1.5" double? 1.5
+      1 double? 1.0
       12345 string? "12345"
       "foo" keyword? :foo
+      'foo keyword? :foo
+
+      "" ::c/nonblank-string nil
+      "  " ::c/nonblank-string nil
+      " 1/ " ::c/nonblank-string " 1/ "
+
+      ;; From JSON
+      "[1, 2, 3]" (from-custom-parser json/parse-string (s/coll-of int?)) [1 2 3]
+      "{\"foo\": 1, \"bar\": true}" (from-custom-parser json/parse-string (s/map-of string? any?)) {"foo" 1 "bar" true}
+
       ;; From EDN
-      "[1 2 3]" (s/coll-of int?) [1 2 3]))
+      "[1 2 3]" (from-edn (s/coll-of int?)) [1 2 3]))
 
   (testing "Throws good error messages"
     (are [in? ?spec ?exception-message-regex]
       (is (thrown-with-msg? Exception ?exception-message-regex
                             (coerce-to-spec ?spec in?)))
-      "a" int? #"For input string: \"a\""
-      "[1 2" (s/coll-of int?) #"fails predicate.*get known-conformers"
-      "[1.5]" (s/coll-of int?) #"val: 1.5 fails predicate: int?")))
+      "a" int? #"val: \"a\" fails predicate: parseInt"
+      1.0 int? #"val: 1.0 fails predicate: parseInt"
+      "[1 2" (from-edn (s/coll-of int?)) #"fails predicate: read-string"
+      "[1.5]" (from-edn (s/coll-of int?)) #"val: 1.5 fails predicate: int?")))
 
 
 (deftest to-schema

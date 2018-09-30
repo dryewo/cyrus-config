@@ -3,9 +3,9 @@
             [cyrus-config.core :as cfg]
             [clojure.spec.test.alpha :as st]
             [schema.core :as ps]
-            [clojure.spec.alpha :as s])
+            [clojure.spec.alpha :as s]
+            [clojure.string :as str])
   (:import (cyrus_config.core ConfigNotLoaded)
-           (schema.core Schema)
            (clojure.lang ExceptionInfo)))
 
 
@@ -121,7 +121,7 @@
 (deftest validate
   (testing "Validation throws an exception with error descriptions"
     (is (thrown-with-msg? ExceptionInfo #"<ERROR> because VALIDATE_1 is not set - Required not present" (cfg/validate!)))
-    (is (thrown-with-msg? ExceptionInfo #"<ERROR> because VALIDATE_2 contains \"a\" in :default - java.lang.NumberFormatException" (cfg/validate!)))))
+    (is (thrown-with-msg? ExceptionInfo #"<ERROR> because VALIDATE_2 contains \"a\" in :default - .* val: \"a\" fails predicate: parseInt" (cfg/validate!)))))
 
 
 (cfg/def false-default-1 {:default false :spec boolean?})
@@ -190,9 +190,32 @@
     (is (= "1" ENV_CASE))))
 
 
+(defn parse-csv [csv]
+  (->> (str/split (str csv) #",")
+       (map str/trim)
+       (map #(Integer/parseInt %))))
+
+
+(cfg/def CUSTOM_PARSED {:spec (s/conformer parse-csv)})
+(meta #'CUSTOM_PARSED)
+(deftest custom-parsed
+  (testing "Conveniently support custom conformers"
+    (cfg/reload-with-override! '{CUSTOM_PARSED "1 , 2,3"})
+    (is (= [1 2 3] CUSTOM_PARSED)))
+
+  (testing "Error from custom parser"
+    (cfg/reload-with-override! '{CUSTOM_PARSED "1,2,a"})
+    (is (= ::cfg/invalid-value (-> (meta #'CUSTOM_PARSED) ::cfg/error :code))))
+
+  (testing "Does not call parser when var not set"
+    (cfg/reload-with-override! '{})
+    (is (= nil CUSTOM_PARSED))))
+
+
 ;; Manual tests
 (comment
   ;; Should look nice
+  (cfg/validate!)
   (println (cfg/show))
 
   ;; Spec and schema not allowed at the same time

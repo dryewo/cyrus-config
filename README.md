@@ -230,7 +230,29 @@ It is enabled by setting `:spec` key in the parameters:
 (cfg/def HTTP_PORT {:spec int?})
 ```
 
-Basic types are supported: `int?`, `double?`, `keyword?`, `string?` (the default one, does nothing).
+Implicit coercion is in place for basic types: `int?`, `double?`, `boolean?`, keyword?`, `string?` (the default one, does nothing). 
+
+##### Custom coercions
+
+`:cyrus-config.coerce/nonblank-string` spec is included, it conforms blank string to `nil`:
+
+    EXTERNAL_SERVICE_URL=""
+
+```clj
+(require '[cyrus-config.coerce :as cfgc])
+
+(cfg/def EXTERNAL_SERVICE_URL {:spec ::cfgc/nonblank-string})
+
+(when-not EXTERNAL_SERVICE_URL
+  (log/warn "EXTERNAL_SERVICE_URL is not set, will not try to access!"))
+```
+
+Without `::cfgc/nonblank-string` you would need to check for blankness of the string every time you use it:
+
+```clj
+(when (str/blank? EXTERNAL_SERVICE_URL)
+  (log/warn "EXTERNAL_SERVICE_URL is not set, will not try to access!"))
+```
 
 Additionally, you can put a complex value in EDN format into the variable:
 
@@ -239,11 +261,34 @@ Additionally, you can put a complex value in EDN format into the variable:
 and then conform it:
 
 ```clj
-(cfg/def IP_WHITELIST {:spec (s/coll-of string?)})
-ip-whitelist
+(cfg/def IP_WHITELIST {:spec (cfgc/from-edn (s/coll-of string?))})
+IP_WHITELIST
 => ["1.2.3.4" "4.3.2.1"]
 ;; ^ not a string, a Clojure data structure
 ```
+
+Alternatively, you can use JSON format:
+
+    IP_WHITELIST='["1.2.3.4", "4.3.2.1"]'
+
+```clj
+(cfg/def IP_WHITELIST {:spec (cfgc/from-custom-parser json/parse-string (s/coll-of string?))})
+```
+
+Or any other custom conversion:
+
+    IP_WHITELIST='1.2.3.4, 4.3.2.1'
+
+```clj
+(defn parse-csv [csv]
+  (->> (str/split (str csv) #",")
+       (map str/trim)))
+
+(cfg/def IP_WHITELIST {:spec (s/conformer parse-csv)})
+```
+
+In this case, conversion is considered successful if it does not throw an exception.
+
 
 #### Prismatic Schema
 
@@ -255,7 +300,7 @@ It is enabled by setting `:schema` key in the parameters:
 (cfg/def HTTP_PORT {:schema s/Int})
 ```
 
-Also, it's necessary to include `[squeeze "0.3.1]` library in project dependencies to use `:schema` key.
+Also, it's necessary to include `[squeeze "0.3.2]` library in project dependencies to use `:schema` key.
 
 Besides supporting all atomic types (`s/Int`, `s/Num`, `s/Keyword`, etc.), complex types can be coerced:
 
@@ -294,7 +339,7 @@ Additionally, when using REPL-driven development, you can provide unstringified 
 
 ## Rationale
 
-Let's assume, we are following [12 Factor App] manifesto and read the configuration only from environment variables.
+Let's assume we are following [12 Factor App] manifesto and read the configuration only from environment variables.
 
 Imagine you have a HTTP server that expects a port:
 
@@ -303,7 +348,7 @@ Imagine you have a HTTP server that expects a port:
   (server/start-server {:port (System/getenv "HTTP_PORT")}))
 ```
 
-But the library expects integer, not string:
+But the HTTP server library expects an integer, not a string:
 
 ```clj
 (defn start-server []
@@ -359,7 +404,7 @@ If you do REPL-driven development, overrides can be read from a file and applied
 It is a lot of hassle already, while we just wanted to read one simple value and have some basic REPL support.
 This solution still has drawbacks:
 
-* If the variable is used in many places, its name has to be repeated, which adds risk of typos ("HTPT_PORT").
+* If the variable is used in many places, its name has to be repeated, which adds risk of typos ("HTPP_PORT").
 * Errors are found late, only when first accessing the value.
 * Errors are only given one at a time: if the application fails to start because of one invalid variable, it does not check
   other values which are needed later.

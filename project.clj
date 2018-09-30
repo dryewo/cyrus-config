@@ -9,7 +9,8 @@
             [lein-ancient "0.6.15"]
             [lein-changelog "0.3.1"]]
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.9.0"]
-                                  [squeeze "0.3.2"]]}}
+                                  [squeeze "0.3.2"]
+                                  [cheshire "5.8.1"]]}}
   :deploy-repositories [["releases" :clojars]]
   :aliases {"update-readme-version" ["shell" "sed" "-i" "s/\\\\[cyrus\\\\/config \"[0-9.]*\"\\\\]/[cyrus\\\\/config \"${:version}\"]/" "README.md"]}
   :release-tasks [["shell" "git" "diff" "--exit-code"]
