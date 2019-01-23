@@ -281,13 +281,21 @@ Or any other custom conversion:
 
 ```clj
 (defn parse-csv [csv]
-  (->> (str/split (str csv) #",")
-       (map str/trim)))
+  (if (sequential? csv)
+    csv
+    (->> (str/split (str csv) #",")
+         (map str/trim))))
 
 (cfg/def IP_WHITELIST {:spec (s/conformer parse-csv)})
 ```
 
 In this case, conversion is considered successful if it does not throw an exception.
+
+`if (sequential? csv)` condition is important, it allows to provide `:default` not only as string, but also as target type:
+
+```clj
+(cfg/def IP_WHITELIST {:spec (s/conformer parse-csv) :default ["one" "two"]})
+```
 
 
 #### Prismatic Schema

@@ -3,7 +3,15 @@
             [cyrus-config.coerce :refer :all :as c]
             [clojure.spec.alpha :as s]
             [schema.core :as ps]
-            [cheshire.core :as json]))
+            [cheshire.core :as json]
+            [clojure.string :as str]))
+
+
+(defn parse-csv [csv]
+  (if (sequential? csv)
+    csv
+    (->> (str/split (str csv) #",")
+         (map str/trim))))
 
 
 (deftest to-spec
@@ -22,6 +30,9 @@
       "" ::c/nonblank-string nil
       "  " ::c/nonblank-string nil
       " 1/ " ::c/nonblank-string " 1/ "
+
+      ;; From a custom conformer
+      "one,two" (s/conformer parse-csv) ["one" "two"]
 
       ;; From JSON
       "[1, 2, 3]" (from-custom-parser json/parse-string (s/coll-of int?)) [1 2 3]
