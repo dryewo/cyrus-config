@@ -34,10 +34,10 @@
     (are [in? ?spec ?exception-message-regex]
       (is (thrown-with-msg? Exception ?exception-message-regex
                             (coerce-to-spec ?spec in?)))
-      "a" int? #"val: \"a\" fails predicate: parseInt"
-      1.0 int? #"val: 1.0 fails predicate: parseInt"
-      "[1 2" (from-edn (s/coll-of int?)) #"fails predicate: read-string"
-      "[1.5]" (from-edn (s/coll-of int?)) #"val: 1.5 fails predicate: int?")))
+      "a" int? #"\"a\" - failed: parseInt"
+      1.0 int? #"1.0 - failed: parseInt"
+      "[1 2" (from-edn (s/coll-of int?)) #"\"\[1 2\" - failed: read-string"
+      "[1 1.5]" (from-edn (s/coll-of int?)) #"1.5 - failed: int\? in: \[1\]")))
 
 
 (deftest to-schema

@@ -8,8 +8,8 @@
             [lein-shell "0.5.0"]
             [lein-ancient "0.6.15"]
             [lein-changelog "0.3.2"]]
-  :profiles {:dev {:dependencies [[org.clojure/clojure "1.9.0"]
-                                  [squeeze "0.3.2"]
+  :profiles {:dev {:dependencies [[org.clojure/clojure "1.10.0"]
+                                  [squeeze "0.3.3"]
                                   [cheshire "5.8.1"]]}}
   :deploy-repositories [["releases" :clojars]]
   :aliases {"update-readme-version" ["shell" "sed" "-i" "s/\\\\[cyrus\\\\/config \"[0-9.]*\"\\\\]/[cyrus\\\\/config \"${:version}\"]/" "README.md"]}
