@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
+
+## [0.3.1] — 2019-01-23
 ### Changed
 - Bump library versions.
 - Improve documentation on custom conformers.
@@ -32,4 +34,5 @@ Released without _CHANGELOG.md_
 
 [0.2.2]: https://github.com/dryewo/cyrus-config/compare/0.2.1...0.2.2
 [0.3.0]: https://github.com/dryewo/cyrus-config/compare/0.2.2...0.3.0
-[Unreleased]: https://github.com/dryewo/cyrus-config/compare/0.3.0...HEAD
+[0.3.1]: https://github.com/dryewo/cyrus-config/compare/0.3.0...0.3.1
+[Unreleased]: https://github.com/dryewo/cyrus-config/compare/0.3.1...HEAD

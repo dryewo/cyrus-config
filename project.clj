@@ -1,4 +1,4 @@
-(defproject cyrus/config "0.3.0"
+(defproject cyrus/config "0.3.1"
   :description "Config loading library"
   :url "https://github.com/dryewo/cyrus-config"
   :license {:name "Eclipse Public License"
