@@ -121,7 +121,7 @@
 (deftest validate
   (testing "Validation throws an exception with error descriptions"
     (is (thrown-with-msg? ExceptionInfo #"<ERROR> because VALIDATE_1 is not set - Required not present" (cfg/validate!)))
-    (is (thrown-with-msg? ExceptionInfo #"<ERROR> because VALIDATE_2 contains \"a\" in :default - .* val: \"a\" fails predicate: parseInt" (cfg/validate!)))))
+    (is (thrown-with-msg? ExceptionInfo #"<ERROR> because VALIDATE_2 contains \"a\" in :default - .* \"a\" - failed: parseInt" (cfg/validate!)))))
 
 
 (cfg/def FALSE_DEFAULT_1 {:default false :spec boolean?})
