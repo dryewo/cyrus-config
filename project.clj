@@ -3,7 +3,7 @@
   :url "https://github.com/dryewo/cyrus-config"
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies []
+  :dependencies [[spec-coerce "1.0.0-alpha13"]]
   :plugins [[lein-cloverage "1.0.13"]
             [lein-shell "0.5.0"]
             [lein-ancient "0.6.15"]

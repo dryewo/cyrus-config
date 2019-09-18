@@ -1,6 +1,7 @@
 (ns cyrus-config.core
   (:require [clojure.spec.alpha :as s]
             [clojure.string :as str]
+            [spec-coerce.core :as sc]
             [cyrus-config.coerce :as c])
   (:import (java.io Writer)
            (java.util LinkedHashSet)
@@ -38,6 +39,7 @@
 (s/def ::secret boolean?)
 (s/def ::var-name (s/or :string string? :keyword keyword?))
 (s/def ::config-definition (s/keys :opt-un [::spec ::schema ::required ::default ::secret ::var-name]))
+(s/def ::default-coercion-spec string?)
 
 (s/fdef effective-config-definition
   :args (s/cat :name symbol? :definition ::config-definition))
@@ -77,11 +79,11 @@
                           (try
                             (cond
                               spec
-                              [(c/coerce-to-spec spec raw-value)]
+                              [(sc/coerce! spec raw-value)]
                               schema
                               [(c/coerce-to-schema schema raw-value)]
                               :else
-                              [(c/coerce-to-spec string? raw-value)])
+                              [(sc/coerce! ::default-coercion-spec raw-value)])
                             (catch Exception e
                               (let [error {:code ::invalid-value :value raw-value :message (str e)}]
                                 [(ConfigNotLoaded. error) error])))))]

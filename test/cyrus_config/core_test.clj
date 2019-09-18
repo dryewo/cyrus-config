@@ -1,10 +1,12 @@
 (ns cyrus-config.core-test
   (:require [clojure.test :refer :all]
             [cyrus-config.core :as cfg]
+            [cyrus-config.coerce :as c]
             [clojure.spec.test.alpha :as st]
             [schema.core :as ps]
             [clojure.spec.alpha :as s]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [spec-coerce.core :as sc])
   (:import (cyrus_config.core ConfigNotLoaded)
            (clojure.lang ExceptionInfo)))
 
@@ -84,7 +86,7 @@
     (is (= DEFAULT_1 "foo"))))
 
 
-(cfg/def SPEC_1 {:spec int? :default "1"})
+(cfg/def SPEC_1 {:spec ::c/int :default "1"})
 (deftest spec
   (testing "Coercion applied to default values"
     (is (= SPEC_1 1)))
@@ -117,21 +119,21 @@
 
 
 (cfg/def VALIDATE_1 {:required true})
-(cfg/def VALIDATE_2 {:spec int? :default "a"})
+(cfg/def VALIDATE_2 {:spec ::c/int :default "a"})
 (deftest validate
   (testing "Validation throws an exception with error descriptions"
     (is (thrown-with-msg? ExceptionInfo #"<ERROR> because VALIDATE_1 is not set - Required not present" (cfg/validate!)))
-    (is (thrown-with-msg? ExceptionInfo #"<ERROR> because VALIDATE_2 contains \"a\" in :default - .* \"a\" - failed: parseInt" (cfg/validate!)))))
+    (is (thrown-with-msg? ExceptionInfo #"<ERROR> because VALIDATE_2 contains \"a\" in :default - clojure.lang.ExceptionInfo: Failed to coerce value \{:spec :cyrus-config.coerce/int, :value \"a\"\}" (cfg/validate!)))))
 
 
-(cfg/def FALSE_DEFAULT_1 {:default false :spec boolean?})
+(cfg/def FALSE_DEFAULT_1 {:default false :spec ::c/boolean})
 (deftest false-default
   (testing "Setting false as default value works"
     (is (= FALSE_DEFAULT_1 false))
     (is (= :default (::cfg/source (meta #'FALSE_DEFAULT_1))))))
 
 
-(cfg/def RELOAD_REQUIRED_1 {:spec boolean? :default true})
+(cfg/def RELOAD_REQUIRED_1 {:spec ::c/boolean :default true})
 (cfg/def RELOAD_REQUIRED_2 {:required (not RELOAD_REQUIRED_1)})
 (deftest reload-required
   (testing "Can define depending on others"
@@ -169,7 +171,7 @@
 
 
 (cfg/def TRANSITIVE_DEPENDS_1)
-(cfg/def TRANSITIVE_DEPENDS_2 {:required (some? TRANSITIVE_DEPENDS_1) :spec int?})
+(cfg/def TRANSITIVE_DEPENDS_2 {:required (some? TRANSITIVE_DEPENDS_1) :spec ::c/int})
 (cfg/def TRANSITIVE_DEPENDS_3 {:default TRANSITIVE_DEPENDS_2})
 (deftest transitive-depends
   (testing "Constants can have their :default and :required be calculated from other constants' values"
@@ -195,8 +197,10 @@
        (map str/trim)
        (map #(Integer/parseInt %))))
 
+(s/def ::csv (s/conformer parse-csv))
+(sc/def ::csv parse-csv)
 
-(cfg/def CUSTOM_PARSED {:spec (s/conformer parse-csv)})
+(cfg/def CUSTOM_PARSED {:spec ::csv})
 (meta #'CUSTOM_PARSED)
 (deftest custom-parsed
   (testing "Conveniently support custom conformers"
