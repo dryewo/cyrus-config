@@ -1,0 +1,14 @@
+{:deps    {org.clojure/clojure {:mvn/version "1.10.0"}
+           squeeze             {:mvn/version "0.3.3"}
+           spec-coerce
+           {;;:mvn/version "1.0.0-alpha13"
+            :git/url "https://github.com/WhittlesJr/spec-coerce.git"
+            :sha     "58340d9ebe930142a192e7693f61d5e2f11ee1fb"}}
+ :aliases {:dev  {:extra-deps {cheshire {:mvn/version "5.8.1"}}}
+           :test {:extra-paths ["test"]
+                  :extra-deps  {cheshire {:mvn/version "5.8.1"}
+                                com.cognitect/test-runner
+                                {:git/url "git@github.com:cognitect-labs/test-runner"
+                                 :sha     "76568540e7f40268ad2b646110f237a60295fa3c"}}
+                  :main-opts   ["-m" "cognitect.test-runner"]}}
+ :paths   ["src"]}
