@@ -3,7 +3,7 @@
            spec-coerce
            {;;:mvn/version "1.0.0-alpha13"
             :git/url "https://github.com/WhittlesJr/spec-coerce.git"
-            :sha     "aabe79a695a2caa93a8cbccd11a7b484bd09324b"}}
+            :sha     "334e5a58c31ba333e8ea285b84050fa67f8238ce"}}
  :aliases {:dev  {:extra-deps {cheshire {:mvn/version "5.8.1"}}}
            :test {:extra-paths ["test"]
                   :extra-deps  {cheshire {:mvn/version "5.8.1"}
