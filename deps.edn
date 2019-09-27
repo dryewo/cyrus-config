@@ -1,0 +1,11 @@
+{:deps    {org.clojure/clojure {:mvn/version "1.10.0"}
+           squeeze             {:mvn/version "0.3.3"}
+           spec-coerce         {:mvn/version "1.0.0-alpha14"}}
+ :aliases {:dev  {:extra-deps {cheshire {:mvn/version "5.8.1"}}}
+           :test {:extra-paths ["test"]
+                  :extra-deps  {cheshire {:mvn/version "5.8.1"}
+                                com.cognitect/test-runner
+                                {:git/url "git@github.com:cognitect-labs/test-runner"
+                                 :sha     "76568540e7f40268ad2b646110f237a60295fa3c"}}
+                  :main-opts   ["-m" "cognitect.test-runner"]}}
+ :paths   ["src"]}

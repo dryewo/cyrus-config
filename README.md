@@ -37,11 +37,14 @@ and then transforms, validates and summarizes it.
 *http.clj:*
 ```clj
 (ns my.http
-  (:require [cyrus-config.core :as cfg]))
+  (:require [cyrus-config.core :as cfg]
+            [clojure.spec.alpha :as s]))
 
 ;; Introduce a configuration constant that will contain validated and transformed value from the environment
 ;; By default uses variable name transformed from the defined name: "HTTP_PORT"
-(cfg/def HTTP_PORT "Port to listen on" {:spec     int?
+
+(s/def ::port int?)
+(cfg/def HTTP_PORT "Port to listen on" {:spec     ::port
                                         :default  8080})
 
 ;; Available immediately, without additional loading commands, but can contain a special value indicating an error.
@@ -91,12 +94,12 @@ This metadata is used in `(cfg/show)`.
 HTTP_PORT
 => 8080
 (meta #'HTTP_PORT)
-=> {::cfg/user-spec      {:spec #object[clojure.core$int_QMARK___5132 ...]}
+=> {::cfg/user-spec      {:spec :my.http/port}
     ::cfg/effective-spec {:required true
                           :default  nil
                           :secret   false
                           :var-name "HTTP_PORT"
-                          :spec     #object[clojure.core$int_QMARK___5132 ...]}
+                          :spec     :my.http/port}
     ::cfg/source         :environment
     ::cfg/raw-value      "8080"
     ::cfg/error          nil
@@ -129,8 +132,7 @@ will silently get a special value that indicates an error, for example:
 
     ```
 * `:default` — default value to use if the variable is not set. Cannot be used together with `:required true`. Defaults to `nil`.
-* `:spec` — Clojure Spec to conform the value to. Defaults to `string?`, can also be `int?`, `keyword?`, `double?` and 
-  any complex spec, in which case the original value will be parsed as EDN and then conformed. See Conforming/Coercing section below. 
+* `:spec` — Clojure Spec to conform the value to. Defaults to string. Specs must be provided as fully-qualified registered keywords. See Conforming/Coercing section below. 
 * `:schema` — Prismatic Schema to coerce the value to (same as `:spec`, but for Prismatic). Complex schemas first parse the value as YAML.
 * `:secret` — boolean, if true, the value will not be displayed in the overview returned by `(cfg/show)`:
     ```
@@ -140,10 +142,11 @@ will silently get a special value that indicates an error, for example:
 You can also use existing configuration constants' values when defining configuration constants:
 
 ```clj
+(s/def ::server-polling-interval int?)
 (cfg/def SERVER_URL)
 
 ;; This constant will only be required if SERVER_URL is set
-(cfg/def SERVER_POLLING_INTERVAL {:required (some? SERVER_URL) :spec int?})
+(cfg/def SERVER_POLLING_INTERVAL {:required (some? SERVER_URL) :spec ::server-polling-interval})
 
 ;; This will get default value from SERVER_POLLING_INTERVAL, when it's set (it also has a different type)
 (cfg/def SERVER_POLLING_DELAY {:default SERVER_POLLING_INTERVAL})
@@ -163,7 +166,8 @@ The output looks like this:
 cyrus-config.core/validate!  core.clj:  146
        clojure.core/ex-info  core.clj: 4739
 clojure.lang.ExceptionInfo: Errors found when loading config:
-                            #'my.http/HTTP_PORT: <ERROR> because HTTP_PORT contains "abcd" in :environment - java.lang.NumberFormatException: For input string: "abcd" // Port to listen on
+
+                            #'my.http/HTTP_PORT: <ERROR> because HTTP_PORT contains "abcd" in :environment - clojure.lang.ExceptionInfo: Failed to coerce value {:spec :my.http/port, :value "abcd"} // Port to listen on
 ```
 
 #### Summary
@@ -217,20 +221,26 @@ This will ensure that every time the code is reloaded, the overrides file `dev-e
 ### Conforming/Coercion
 
 The library supports two ways of conforming (a.k.a. coercing) environment values (which are always string) to
-various types: integer, keyword, double, etc. The ways of defining targer types are Clojure Spec and Prismatic Schema.
+various types: integer, keyword, double, etc. The ways of defining target types are Clojure Spec and Prismatic Schema.
 They are mutually exclusive, i.e. only one of `:spec` and `:schema` keys are possible at the same time for each configuration constant.
 
 #### Clojure Spec
 
 > [spec] is a Clojure library to describe the structure of data and functions.
 
-It is enabled by setting `:spec` key in the parameters:
+The Clojure Spec coercion implementation is provided by [spec-coerce](https://github.com/wilkerlucio/spec-coerce). It is enabled by setting `:spec` key in the parameters:
 
 ```clj
-(cfg/def HTTP_PORT {:spec int?})
+(s/def ::port int?)
+(cfg/def HTTP_PORT {:spec ::port})
 ```
 
-Implicit coercion is in place for basic types: `int?`, `double?`, `boolean?`, keyword?`, `string?` (the default one, does nothing). 
+Implicit coercion is in place for basic types: `int?`, `double?`, `boolean?`, `keyword?`, `string?` (the default one does nothing). But note that you must provide the spec in the form of a registered, fully-qualified keyword as defined by `s/def`. It's expected that you will be defining these on your own (as in the example of `::port` above), but if you'd rather not, there are some stand-in specs for the basic types located under `cyrus-config.coerce`:
+- :cyrus-config.coerce/int
+- :cyrus-config.coerce/double
+- :cyrus-config.coerce/keyword
+- :cyrus-config.coerce/string
+- :cyrus-config.coerce/boolean
 
 ##### Custom coercions
 
@@ -258,10 +268,15 @@ Additionally, you can put a complex value in EDN format into the variable:
 
     IP_WHITELIST='["1.2.3.4" "4.3.2.1"]'
 
-and then conform it:
+and then define how to coerce it using spec-coerce's `def` form:
 
 ```clj
-(cfg/def IP_WHITELIST {:spec (cfgc/from-edn (s/coll-of string?))})
+(require '[spec-coerce.core :as sc]
+         '[clojure.spec.alpha :as s]
+         '[clojure.edn :as edn])
+(s/def ::ip-whitelist (s/coll-of string?))
+(sc/def ::ip-whitelist edn/read-string)
+(cfg/def IP_WHITELIST {:spec ::ip-whitelist})
 IP_WHITELIST
 => ["1.2.3.4" "4.3.2.1"]
 ;; ^ not a string, a Clojure data structure
@@ -272,7 +287,8 @@ Alternatively, you can use JSON format:
     IP_WHITELIST='["1.2.3.4", "4.3.2.1"]'
 
 ```clj
-(cfg/def IP_WHITELIST {:spec (cfgc/from-custom-parser json/parse-string (s/coll-of string?))})
+(require '[cheshire.core :as json])
+(sc/def ::ip-whitelist json/parse-string)
 ```
 
 Or any other custom conversion:
@@ -286,17 +302,35 @@ Or any other custom conversion:
     (->> (str/split (str csv) #",")
          (map str/trim))))
 
-(cfg/def IP_WHITELIST {:spec (s/conformer parse-csv)})
+(sc/def ::ip-whitelist parse-csv)
 ```
-
-In this case, conversion is considered successful if it does not throw an exception.
 
 `if (sequential? csv)` condition is important, it allows to provide `:default` not only as string, but also as target type:
 
 ```clj
-(cfg/def IP_WHITELIST {:spec (s/conformer parse-csv) :default ["one" "two"]})
+(cfg/def IP_WHITELIST {:spec ::ip-whitelist :default ["one" "two"]})
 ```
 
+Note also that spec-coerce honors the "first" or "left-most" spec condition of `s/and` specs for coercion. So, when using one of the basic predicates (like `keyword?` or `int?`) for coercing, you can specify the general coercion spec first and then the more granular constraints afterward to avoid the need for an `sc/def` line:
+
+```clj
+(s/def ::my-number (s/and int? (s/int-in 0 2)))
+;; Is the same as:
+(s/def ::my-number (s/int-in 0 2))
+(sc/def ::my-number sc/parse-long)
+```
+
+See [spec-coerce's usage](https://github.com/wilkerlucio/spec-coerce#usage) for more details and options.
+
+NOTE: Taking this approach may hamper your ability to generate sample data from these specs. `::my-number` will sometimes fail to generate after 100 tries, because the `int?` case is very broad and the `s/int-in` case is very narrow. It seems spec's generator logic also reads left-to-right in this sense. 
+
+A better solution to the specific `::my-number` example above would be to use a homogeneous set:
+
+```clj
+(s/def ::my-number #{0 1})
+```
+
+spec-coerce will infer from this set that it needs to parse as an integer. 
 
 #### Prismatic Schema
 
