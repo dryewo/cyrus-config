@@ -1,9 +1,6 @@
 {:deps    {org.clojure/clojure {:mvn/version "1.10.0"}
            squeeze             {:mvn/version "0.3.3"}
-           spec-coerce
-           {;;:mvn/version "1.0.0-alpha13"
-            :git/url "https://github.com/wilkerlucio/spec-coerce.git"
-            :sha     "0d5515ef3a1a61a92c6bad5b12809ee98876a541"}}
+           spec-coerce         {:mvn/version "1.0.0-alpha14"}}
  :aliases {:dev  {:extra-deps {cheshire {:mvn/version "5.8.1"}}}
            :test {:extra-paths ["test"]
                   :extra-deps  {cheshire {:mvn/version "5.8.1"}

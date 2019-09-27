@@ -314,15 +314,23 @@ Or any other custom conversion:
 Note also that spec-coerce honors the "first" or "left-most" spec condition of `s/and` specs for coercion. So, when using one of the basic predicates (like `keyword?` or `int?`) for coercing, you can specify the general coercion spec first and then the more granular constraints afterward to avoid the need for an `sc/def` line:
 
 ```clj
-(s/def ::a-b-or-c (s/and keyword? #{:a :b :c}))
+(s/def ::my-number (s/and int? (s/int-in 0 2)))
 ;; Is the same as:
-(s/def ::a-b-or-c #{:a :b :c})
-(sc/def ::a-b-or-c keyword?)
+(s/def ::my-number (s/int-in 0 2))
+(sc/def ::my-number sc/parse-long)
 ```
 
 See [spec-coerce's usage](https://github.com/wilkerlucio/spec-coerce#usage) for more details and options.
 
-NOTE: Taking this approach may hamper your ability to generate sample data from these specs. `::a-b-or-c` above cannot easily be generated, because the `keyword?` case is very broad and the `#{:a :b :c}` case is very narrow. It seems spec's generator logic also reads left-to-right in this sense.
+NOTE: Taking this approach may hamper your ability to generate sample data from these specs. `::my-number` will sometimes fail to generate after 100 tries, because the `int?` case is very broad and the `s/int-in` case is very narrow. It seems spec's generator logic also reads left-to-right in this sense. 
+
+A better solution to the specific `::my-number` example above would be to use a homogeneous set:
+
+```clj
+(s/def ::my-number #{0 1})
+```
+
+spec-coerce will infer from this set that it needs to parse as an integer. 
 
 #### Prismatic Schema
 
